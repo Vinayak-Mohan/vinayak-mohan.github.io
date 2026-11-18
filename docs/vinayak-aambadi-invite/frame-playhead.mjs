@@ -1,0 +1,1 @@
+export class FramePlayhead{constructor(t,a=0){this.end=Math.max(0,t-1),this.position=this.clamp(a)}clamp(t){return Math.max(0,Math.min(this.end,t))}next(t){return this.clamp(t)}commit(t){this.position=this.clamp(t)}}
