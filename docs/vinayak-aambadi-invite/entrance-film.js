@@ -1,1 +1,106 @@
-(()=>{const h=["progress","loadeddata","canplaythrough","durationchange"];function p(e){if(e.readyState<2||!Number.isFinite(e.duration))return!1;for(let r=0;r<e.buffered.length;r++)if(e.buffered.start(r)<.1&&e.buffered.end(r)>=e.duration-.1)return!0;return!1}function y(e,r){return p(e)?Promise.resolve(!0):new Promise(a=>{let t;const n=i=>{clearTimeout(t),h.forEach(u=>e.removeEventListener(u,s)),e.removeEventListener("error",o),a(i)},s=()=>{p(e)&&n(!0)},o=()=>n(!1);h.forEach(i=>e.addEventListener(i,s)),e.addEventListener("error",o,{once:!0}),t=setTimeout(o,r),s()})}function w(e){const r=matchMedia("(max-width:700px)").matches?"mobile":"desktop",a=e.dataset[r],t=e.dataset.assets||"assets/entrance-film-v1";return e.poster=t+"/"+r+"-start.webp",e.muted=!0,e.playsInline=!0,a&&e.getAttribute("src")!==a&&(e.src=a,e.load()),a}window.prepareInvitationFilm=e=>navigator.connection?.saveData?Promise.resolve(!1):(e.preload="auto",w(e),y(e,4500)),window.playInvitationEntrance=async({gate:e,reduced:r,reveal:a})=>{const t=e.querySelector(".entrance-film");if(!t||r.matches||!w(t))return!1;let n=!1,s,o=0,i=0;const u=new URLSearchParams(location.search).has("entrance-debug"),b=()=>t.getVideoPlaybackQuality?.();let f,m=0;const F=[],L=(V,d)=>{const c=b();c&&c.droppedVideoFrames>m&&F.push({at:d.mediaTime,count:c.droppedVideoFrames-m}),c&&(m=c.droppedVideoFrames),n||(i=t.requestVideoFrameCallback(L))},E=()=>o++,l=V=>{if(!n){if(n=!0,clearTimeout(s),t.pause(),t.removeEventListener("ended",g),t.removeEventListener("error",k),t.removeEventListener("waiting",E),i&&t.cancelVideoFrameCallback?.(i),u){const d=b();t.dataset.playbackAudit=JSON.stringify({reason:V,duration:t.duration,position:t.currentTime,speed:t.playbackRate,fullyBuffered:p(t),waitingEvents:o,totalFrames:d?d.totalVideoFrames-(f?.totalVideoFrames||0):null,droppedFrames:d?d.droppedVideoFrames-(f?.droppedVideoFrames||0):null,dropMoments:F,width:t.videoWidth,height:t.videoHeight})}e.classList.remove("film-buffering"),e.classList.add("film-finished"),t.readyState<2&&e.classList.remove("film-playing"),a()}},g=()=>l("ended"),k=()=>l("error");t.addEventListener("ended",g,{once:!0}),t.addEventListener("error",k,{once:!0}),t.addEventListener("waiting",E),e.classList.add("film-buffering"),t.preload="auto",s=setTimeout(()=>l("timeout"),14e3);const v=await y(t,3500);if(n)return!0;if(!v)return l("unbuffered"),!0;f=b(),m=f?.droppedVideoFrames||0,u&&t.requestVideoFrameCallback&&(i=t.requestVideoFrameCallback(L)),t.defaultPlaybackRate=t.playbackRate=1.15,e.style.setProperty("--entrance-duration",t.duration/t.playbackRate+"s"),e.classList.remove("film-buffering"),e.classList.add("film-playing");try{await t.play(),n&&t.pause()}catch{l("blocked")}return!0}})();
+// Prebuffer this short, one-shot film so network stalls cannot interrupt it.
+(() => {
+  const events=['progress','loadeddata','canplaythrough','durationchange'];
+  function buffered(video) {
+    if(video.readyState<2 || !Number.isFinite(video.duration)) return false;
+    for(let i=0;i<video.buffered.length;i++) {
+      if(video.buffered.start(i)<.1 && video.buffered.end(i)>=video.duration-.1) return true;
+    }
+    return false;
+  }
+  function waitForBuffer(video,timeout) {
+    if(buffered(video)) return Promise.resolve(true);
+    return new Promise(resolve=>{
+      let timer;
+      const done=ready=>{
+        clearTimeout(timer);
+        events.forEach(event=>video.removeEventListener(event,check));
+        video.removeEventListener('error',failed);
+        resolve(ready);
+      };
+      const check=()=>{if(buffered(video))done(true);};
+      const failed=()=>done(false);
+      events.forEach(event=>video.addEventListener(event,check));
+      video.addEventListener('error',failed,{once:true});
+      timer=setTimeout(failed,timeout);
+      check();
+    });
+  }
+  function selectSource(video) {
+    const variant=matchMedia('(max-width:700px)').matches?'mobile':'desktop';
+    const source=video.dataset[variant];
+    const assets=video.dataset.assets||'assets/entrance-film-v1';
+    video.poster=assets+'/'+variant+'-closed.webp';
+    video.muted=true;
+    video.playsInline=true;
+    if(source && video.getAttribute('src')!==source){video.src=source;video.load();}
+    return source;
+  }
+  window.prepareInvitationFilm=video=>{
+    if(navigator.connection?.saveData)return Promise.resolve(false);
+    video.preload='auto';
+    selectSource(video);
+    return waitForBuffer(video,4500);
+  };
+  window.playInvitationEntrance=async({gate,reduced,reveal})=>{
+    const video=gate.querySelector('.entrance-film');
+    if(!video || reduced.matches || !selectSource(video))return false;
+    let finished=false,timer,waiting=0,frameCallback=0;
+    const debug=new URLSearchParams(location.search).has('entrance-debug');
+    const quality=()=>video.getVideoPlaybackQuality?.();
+    let initialQuality,lastDropped=0;
+    const dropMoments=[];
+    const watchFrame=(_now,frame)=>{
+      const q=quality();
+      if(q && q.droppedVideoFrames>lastDropped)dropMoments.push({at:frame.mediaTime,count:q.droppedVideoFrames-lastDropped});
+      if(q)lastDropped=q.droppedVideoFrames;
+      if(!finished)frameCallback=video.requestVideoFrameCallback(watchFrame);
+    };
+    const onWaiting=()=>waiting++;
+    const finish=reason=>{
+      if(finished)return;
+      finished=true;
+      clearTimeout(timer);
+      video.pause();
+      video.removeEventListener('ended',onEnded);
+      video.removeEventListener('error',onError);
+      video.removeEventListener('waiting',onWaiting);
+      if(frameCallback)video.cancelVideoFrameCallback?.(frameCallback);
+      if(debug){
+        const final=quality();
+        video.dataset.playbackAudit=JSON.stringify({reason,duration:video.duration,position:video.currentTime,
+          speed:video.playbackRate,fullyBuffered:buffered(video),waitingEvents:waiting,
+          totalFrames:final?final.totalVideoFrames-(initialQuality?.totalVideoFrames||0):null,
+          droppedFrames:final?final.droppedVideoFrames-(initialQuality?.droppedVideoFrames||0):null,
+          dropMoments,width:video.videoWidth,height:video.videoHeight});
+      }
+      gate.classList.remove('film-buffering');
+      gate.classList.add('film-finished');
+      if(video.readyState<2)gate.classList.remove('film-playing');
+      reveal();
+    };
+    const onEnded=()=>finish('ended');
+    const onError=()=>finish('error');
+    video.addEventListener('ended',onEnded,{once:true});
+    video.addEventListener('error',onError,{once:true});
+    video.addEventListener('waiting',onWaiting);
+    gate.classList.add('film-buffering');
+    video.preload='auto';
+    timer=setTimeout(()=>finish('timeout'),14000);
+    const ready=await waitForBuffer(video,3500);
+    if(finished)return true;
+    if(!ready){finish('unbuffered');return true;}
+    initialQuality=quality();
+    lastDropped=initialQuality?.droppedVideoFrames||0;
+    if(debug && video.requestVideoFrameCallback)frameCallback=video.requestVideoFrameCallback(watchFrame);
+    video.defaultPlaybackRate=video.playbackRate=1.15;
+    gate.style.setProperty('--entrance-duration',(video.duration/video.playbackRate)+'s');
+    gate.classList.remove('film-buffering');
+    gate.classList.add('film-playing');
+    try{
+      await video.play();
+      if(finished)video.pause();
+    }catch{finish('blocked');}
+    return true;
+  };
+})();
