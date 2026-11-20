@@ -238,9 +238,7 @@ h2 span{display:block}h3{font:500 40px/1.05 var(--serif)}
 .door-handle{position:absolute;z-index:5;left:var(--handle-x,50%);top:var(--handle-y,54%);translate:-50% -50%;width:var(--handle-width,176px);height:var(--handle-height,60px);min-height:48px;margin:0;padding:0;border:0;border-radius:24px;background:none;color:#f1e4ce;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overflow:visible}
 .desktop-latch{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 3px 3px #1209058c);transition:transform .18s ease-out}
 .door-handle::before{content:'';position:absolute;inset:-24% -10%;border-radius:50%;background:radial-gradient(ellipse,#f5cc7040,transparent 68%);opacity:0;transition:opacity .2s}
-.door-handle::after{content:'';position:absolute;left:12%;right:12%;top:47%;height:3px;background:linear-gradient(90deg,transparent,#ffe8ac,transparent);border-radius:50%;filter:blur(1px);opacity:0;pointer-events:none;transform:translateX(calc(var(--grip,0)*12px));transition:opacity .15s}
 .door-handle:not(:disabled):hover::before,.door-handle.is-held::before,.opening .door-handle::before{opacity:1}
-.door-handle.is-held::after,.opening .door-handle::after{opacity:.8}
 .door-handle.is-held{cursor:grabbing}
 .door-handle.is-held .desktop-latch{transform:translateX(calc(var(--grip,0)*7px)) scale(.99)}
 .opening .desktop-latch{transform:translateX(6px) scale(.985)}
@@ -260,8 +258,7 @@ h2 span{display:block}h3{font:500 40px/1.05 var(--serif)}
 }
 .film-playing .gate-ui{transform:none}
 @media(max-width:700px){.desktop-latch{display:none}.door-instruction .gate-action{font-size:19px}}
-@media(prefers-reduced-motion:no-preference){.is-ready:not(.opening) .door-handle::after{animation:latch-light 2.5s ease-in-out 1s 2}.is-ready .door-handle.is-held::after{animation:none}@keyframes latch-light{0%,100%{opacity:0;transform:translateX(-8px)}45%{opacity:.55}75%{opacity:0;transform:translateX(12px)}}}
-@media(prefers-reduced-motion:reduce){.door-handle::before,.door-handle::after,.desktop-latch{animation:none!important;transition:none!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){.door-handle::before,.desktop-latch{animation:none!important;transition:none!important;transform:none!important}}
 
 
 /* Only the inner bolts retract. The fixed rosettes are part of the door film. */
@@ -273,8 +270,7 @@ h2 span{display:block}h3{font:500 40px/1.05 var(--serif)}
 .latch-bolt--right{clip-path:inset(0 27.7% 0 50%);transform:translateX(calc(var(--grip,0)*11.25%))}
 .opening .latch-bolt--left{transform:translateX(-22.5%)}
 .opening .latch-bolt--right{transform:translateX(22.5%)}
-.opening .door-handle::after{opacity:0;animation:none}
-.film-playing .door-handle::before,.film-playing .door-handle::after{opacity:0}
+.film-playing .door-handle::before{opacity:0}
 .opening .door-instruction{opacity:0;transition:opacity .25s .35s}
 .film-playing .door-handle{pointer-events:none}
 .film-playing .bolt-mechanism{opacity:0;transition:opacity .12s}

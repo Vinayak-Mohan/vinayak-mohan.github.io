@@ -1,1 +1,268 @@
-import{FramePlayhead as ne}from"./frame-playhead.mjs?v=20261024-direct";const p=matchMedia("(prefers-reduced-motion: reduce)"),ie=navigator.connection?.saveData||/(^|-)2g$/.test(navigator.connection?.effectiveType||""),x=s=>Math.max(0,Math.min(1,s)),H=s=>s.close?.(),j=new Map,ee=new URLSearchParams(location.search).has("film-debug");function re(s){return j.has(s)||j.set(s,fetch(s,{cache:"force-cache"}).then(l=>{if(!l.ok)throw Error("Film unavailable");return l.json()}).catch(l=>{throw j.delete(s),l})),j.get(s)}ie||document.querySelectorAll(".scroll-world[data-manifest]").forEach(s=>{const l=s.querySelector("canvas"),B=l?.getContext("2d",{alpha:!1});if(!B)return;const T=matchMedia("(max-width:700px)"),f=new Map,w=new Map,E=new Map,L=new Map,M=new Map,v=new Map,C=new Set;let W=!1;const te=s.closest(".scene");let a,d,h=0,y=!1,b=0,P=0,u=0,k=0,F=0,_=innerWidth,q=1,z=!0,O=0,$=0;const R=()=>{!b&&y&&!document.hidden&&!p.matches&&(b=requestAnimationFrame(ae))};function G(){const e=s.getBoundingClientRect(),r=Math.min(devicePixelRatio||1,T.matches?1.25:1.5);k=Math.max(1,Math.round(e.width*r)),F=Math.max(1,Math.round(e.height*r)),s.style.setProperty("--world-inset",Math.max(0,(e.height-e.width*16/9)/2)+"px"),(l.width!==k||l.height!==F)&&(s.classList.remove("world-painted"),l.width=k,l.height=F,z=!0)}function I(){const e=u;if(s.dataset.world==="page"){const r=Math.max(1,document.documentElement.scrollHeight-innerHeight);u=r-scrollY<1?1:scrollY<.5?0:x(scrollY/r)}else{const r=te.getBoundingClientRect();u=x((innerHeight-r.top)/(innerHeight+r.height))}u!==e&&(q=u>e?1:-1),R()}function J(){if(!d||!a)return;const e=Math.floor(u*(a.frames-1)/a.perSheet),r=[...f.keys()].sort((t,n)=>Math.abs(n-e)-Math.abs(t-e));for(const t of r)f.size>3&&t!==e&&(H(f.get(t)),f.delete(t))}function K(e,r="low"){if(L.has(e))return Promise.resolve(L.get(e));if(M.has(e))return M.get(e).promise;const t=h,n=new AbortController,i={controller:n};return i.promise=(async()=>{const o=await fetch(a.sheets[e],{cache:"force-cache",priority:r,signal:n.signal});if(!o.ok)throw Error("Film frames unavailable");const c=await o.blob();return t===h&&(L.set(e,c),Y()),c})().finally(()=>{M.get(e)===i&&M.delete(e)}),M.set(e,i),i.promise}async function Y(){if(W||!a||!y||document.hidden||p.matches||!("createImageBitmap"in window))return;const e=Math.floor(u*(a.frames-1)/a.perSheet),r=[...L.keys()].filter(c=>!v.has(c)&&!C.has(c)).sort((c,m)=>Math.abs(c-e)-Math.abs(m-e))[0];if(r===void 0)return;const t=h,n=a,i=Math.min(n.width,T.matches?160:284),o=Math.round(i*n.height/n.width);W=!0;try{const c=await createImageBitmap(L.get(r),{resizeWidth:i*n.columns,resizeHeight:o*Math.ceil(n.perSheet/n.columns),resizeQuality:"low"});if(t!==h){H(c);return}v.set(r,{image:c,width:i,height:o}),ee&&(l.dataset.preparedSheets=String(v.size)),z=!0,R()}catch{t===h&&C.add(r)}finally{t===h&&(W=!1,Y())}}function V(){if(!y||!a||document.hidden||p.matches)return;const e=Math.floor(u*(a.frames-1)/a.perSheet),r=a.sheets.map((t,n)=>n).sort((t,n)=>{const i=o=>Math.abs(o-e)+(Math.sign(o-e)===q?0:.5);return i(t)-i(n)});for(const t of r){if(M.size>=2)break;if(L.has(t)||M.has(t)||(E.get(t)?.until||0)>performance.now())continue;const n=h;K(t).catch(()=>{n===h&&E.set(t,{count:1,until:performance.now()+2e3})}).finally(()=>{n===h&&V()})}}function D(e,r="low"){if(!a||e<0||e>=a.sheets.length||f.has(e)||w.has(e)||(E.get(e)?.until||0)>performance.now()||w.size>=2)return;const t=h,n={};w.set(e,n),(async()=>{const i=await K(e,r);if(t!==h||p.matches||n.cancelled)return;let o;if("createImageBitmap"in window)o=await createImageBitmap(i);else{const c=URL.createObjectURL(i);try{o=new Image,o.src=c,await o.decode()}finally{URL.revokeObjectURL(c)}}if(t!==h||p.matches||n.cancelled){H(o);return}f.set(e,o),E.delete(e),J(),z=!0})().catch(i=>{if(t===h&&!n.cancelled&&i.name!=="AbortError"){const o=(E.get(e)?.count||0)+1;E.set(e,{count:o,until:performance.now()+Math.min(15e3,1e3*2**o)}),clearTimeout(O),o<4&&(O=setTimeout(R,Math.min(15e3,1e3*2**o)))}}).finally(()=>{w.get(e)===n&&w.delete(e),t===h&&R()})}function X(e){const r=Math.floor(e),t=Math.min(a.frames-1,Math.ceil(e)),n=Math.floor(r/a.perSheet),i=Math.floor(t/a.perSheet);return D(n,"high"),D(i,"high"),(f.has(n)||v.has(n))&&(f.has(i)||v.has(i))}function Z(e,r){const t=Math.floor(e/a.perSheet),n=v.get(t),i=f.has(t),o=i?f.get(t):n.image,c=i?a.width:n.width,m=i?a.height:n.height,Q=e%a.perSheet,g=T.matches?Math.min(k/a.width,F/a.height):Math.max(k/a.width,F/a.height),S=a.width*g,A=a.height*g;B.globalAlpha=r,r===1&&(B.fillStyle="#24101e",B.fillRect(0,0,k,F)),B.drawImage(o,Q%a.columns*c,Math.floor(Q/a.columns)*m,c,m,(k-S)/2,(F-A)/2,S,A)}function ae(e){if(b=0,!a||!y||document.hidden||p.matches)return;const r=e-(P||e-16.667);P=e;const t=u*(a.frames-1),n=Math.sign(t-d.position)||q,i=Math.floor(t/a.perSheet),o=Math.floor(Math.ceil(t)/a.perSheet),c=new Set([i,o,i+n]);w.forEach((g,S)=>{c.has(S)||(g.cancelled=!0,w.delete(S))});const m=d.next(t,r);if(X(m)&&(z||m!==d.position)){d.commit(m);const g=Math.floor(m),S=m-g;if(Z(g,1),S>0&&Z(Math.ceil(m),S),B.globalAlpha=1,z=!1,s.classList.add("world-painted"),l.dataset.frame=String(g),ee){l.dataset.target=t.toFixed(3);const A=(l.dataset.trace||"").split(",").filter(Boolean);(Number(A.at(-1))!==g||!A.length)&&A.push(String(g)),l.dataset.trace=A.slice(-512).join(",")}}D(i+n),V(),Y(),J()}function U(){h++,b&&cancelAnimationFrame(b),b=0,P=0,w.forEach(e=>{e.cancelled=!0}),w.clear(),M.forEach(e=>e.controller.abort()),M.clear(),L.clear(),v.forEach(e=>H(e.image)),v.clear(),C.clear(),W=!1,f.forEach(H),f.clear(),E.clear(),clearTimeout(O),a=void 0}async function N(e=!1){if(p.matches)return;const r=!e&&d?d.position:null;I();const t=u;U();const n=h;try{const i=await re(s.dataset.manifest);if(n!==h||p.matches)return;a=T.matches?i.mobile:i.desktop,d=new ne(a.frames,r??t*(a.frames-1)),G(),z=!0,I(),X(d.position),R()}catch{}}new IntersectionObserver(([e])=>{y=e.isIntersecting,clearTimeout($),y?(P=0,a?(I(),R()):N()):(b&&cancelAnimationFrame(b),b=0,$=setTimeout(U,1500))},{rootMargin:"250px 0px"}).observe(s),addEventListener("scroll",I,{passive:!0}),addEventListener("resize",()=>{T.matches&&_===innerWidth||(_=innerWidth,G(),I(),R())},{passive:!0}),T.addEventListener("change",()=>{y?N(!0):(U(),d=void 0)}),document.addEventListener("visibilitychange",()=>{document.hidden||(P=0,I())}),p.addEventListener("change",()=>{p.matches?(U(),s.classList.remove("world-painted")):y&&N()})});
+import {FramePlayhead} from './frame-playhead.mjs?v=20261024-direct';
+
+/* The latest scroll position chooses the frame directly, at display refresh rate.
+   Decoders may finish later, but can only draw the latest requested position. */
+const preference = matchMedia('(prefers-reduced-motion: reduce)');
+const economical = navigator.connection?.saveData || /(^|-)2g$/.test(navigator.connection?.effectiveType || '');
+const clamp = value => Math.max(0, Math.min(1, value));
+const close = image => image.close?.();
+const manifests = new Map();
+const debug = new URLSearchParams(location.search).has('film-debug');
+function manifestAt(url) {
+  if (!manifests.has(url)) manifests.set(url, fetch(url, {cache:'force-cache'}).then(response => {
+    if (!response.ok) throw Error('Film unavailable');
+    return response.json();
+  }).catch(error => {manifests.delete(url); throw error;}));
+  return manifests.get(url);
+}
+
+if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEach(stage => {
+  const canvas = stage.querySelector('canvas');
+  const ctx = canvas?.getContext('2d', {alpha:false});
+  if (!ctx) return;
+  const phone = matchMedia('(max-width:700px)');
+  // Keep the small compressed film, rather than downloading the same atlas again
+  // whenever a quick swipe leaves the decoded window. Only three atlases are decoded.
+  const cache = new Map(), pending = new Map(), failures = new Map();
+  const compressed = new Map(), downloads = new Map();
+  const previews = new Map(), previewFailures = new Set();
+  let previewBusy = false;
+  const scene = stage.closest('.scene');
+  let config, playhead, epoch = 0, active = false, raf = 0, last = 0;
+  let target = 0, width = 0, height = 0, lastWidth = innerWidth, direction = 1;
+  let needsPaint = true, retryTimer = 0, releaseTimer = 0;
+  const schedule = () => {
+    if (!raf && active && !document.hidden && !preference.matches) raf = requestAnimationFrame(paint);
+  };
+  function measure() {
+    const rect = stage.getBoundingClientRect();
+    const ratio = Math.min(devicePixelRatio || 1, phone.matches ? 1.25 : 1.5);
+    width = Math.max(1, Math.round(rect.width * ratio));
+    height = Math.max(1, Math.round(rect.height * ratio));
+    stage.style.setProperty('--world-inset', Math.max(0, (rect.height - rect.width * 16 / 9) / 2) + 'px');
+    if (canvas.width !== width || canvas.height !== height) {
+      // Resizing clears an opaque canvas to black. Keep the poster visible until
+      // a frame for the new dimensions has actually been painted.
+      stage.classList.remove('world-painted');
+      canvas.width = width; canvas.height = height; needsPaint = true;
+    }
+  }
+  function update() {
+    const before = target;
+    if (stage.dataset.world === 'page') {
+      const range = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+      target = range-scrollY < 1 ? 1 : scrollY < .5 ? 0 : clamp(scrollY/range);
+    } else {
+      const rect = scene.getBoundingClientRect();
+      if (stage.dataset.world === 'chapter') {
+        // Play the exchange while its lower-right action is still in view.
+        const lead = innerHeight * .08;
+        target = clamp((lead - rect.top) / (lead + rect.height * .5));
+      } else {
+        target = clamp((innerHeight - rect.top) / (innerHeight + rect.height));
+      }
+    }
+    if (target !== before) direction = target > before ? 1 : -1;
+    schedule();
+  }
+  function trimCache() {
+    if (!playhead || !config) return;
+    const current = Math.floor(target*(config.frames-1) / config.perSheet);
+    const keys = [...cache.keys()].sort((a,b) => Math.abs(b-current)-Math.abs(a-current));
+    for (const key of keys) if (cache.size > 3 && key !== current) {
+      close(cache.get(key)); cache.delete(key);
+    }
+  }
+  function filmBlob(index, priority = 'low') {
+    if (compressed.has(index)) return Promise.resolve(compressed.get(index));
+    if (downloads.has(index)) return downloads.get(index).promise;
+    const generation = epoch, controller = new AbortController();
+    const task = {controller};
+    task.promise = (async () => {
+      const response = await fetch(config.sheets[index], {cache:'force-cache', priority, signal:controller.signal});
+      if (!response.ok) throw Error('Film frames unavailable');
+      const blob = await response.blob();
+      if (generation === epoch) {compressed.set(index, blob); warmPreviews();}
+      return blob;
+    })().finally(() => {if (downloads.get(index) === task) downloads.delete(index);});
+    downloads.set(index, task);
+    return task.promise;
+  }
+  async function warmPreviews() {
+    if (previewBusy || !config || !active || document.hidden || preference.matches || !('createImageBitmap' in window)) return;
+    const current = Math.floor(target*(config.frames-1)/config.perSheet);
+    const index = [...compressed.keys()].filter(index => !previews.has(index) && !previewFailures.has(index))
+      .sort((a,b) => Math.abs(a-current)-Math.abs(b-current))[0];
+    if (index === undefined) return;
+    const generation = epoch, film = config;
+    const tileWidth = Math.min(film.width, phone.matches ? 160 : 284);
+    const tileHeight = Math.round(tileWidth*film.height/film.width);
+    previewBusy = true;
+    try {
+      // A complete lightweight tier makes distant frames immediately drawable.
+      // Full detail replaces it at the SAME position, without a playback queue.
+      const image = await createImageBitmap(compressed.get(index), {
+        resizeWidth:tileWidth*film.columns,
+        resizeHeight:tileHeight*Math.ceil(film.perSheet/film.columns),
+        resizeQuality:'low'
+      });
+      if (generation !== epoch) {close(image); return;}
+      previews.set(index, {image,width:tileWidth,height:tileHeight});
+      if (debug) canvas.dataset.preparedSheets = String(previews.size);
+      needsPaint = true; schedule();
+    } catch {
+      if (generation === epoch) previewFailures.add(index);
+      // Full-detail decoding remains available on unsupported browsers.
+    }
+    finally {
+      if (generation === epoch) {previewBusy = false; warmPreviews();}
+    }
+  }
+  function warmFilm() {
+    if (!active || !config || document.hidden || preference.matches) return;
+    const current = Math.floor(target*(config.frames-1)/config.perSheet);
+    const candidates = config.sheets.map((_,index) => index).sort((a,b) => {
+      const distance = index => Math.abs(index-current) + (Math.sign(index-current) === direction ? 0 : .5);
+      return distance(a)-distance(b);
+    });
+    // Background transfers are bounded and lower priority than the visible frame.
+    for (const index of candidates) {
+      if (downloads.size >= 2) break;
+      if (compressed.has(index) || downloads.has(index) || (failures.get(index)?.until || 0) > performance.now()) continue;
+      const generation = epoch;
+      filmBlob(index).catch(() => {
+        if (generation === epoch) failures.set(index, {count:1,until:performance.now()+2000});
+      }).finally(() => {if (generation === epoch) warmFilm();});
+    }
+  }
+  function request(index, priority = 'low') {
+    if (!config || index < 0 || index >= config.sheets.length || cache.has(index) || pending.has(index)) return;
+    if ((failures.get(index)?.until || 0) > performance.now() || pending.size >= 2) return;
+    const generation = epoch;
+    const task = {}; pending.set(index, task);
+    (async () => {
+      const blob = await filmBlob(index, priority);
+      if (generation !== epoch || preference.matches || task.cancelled) return;
+      let image;
+      if ('createImageBitmap' in window) image = await createImageBitmap(blob);
+      else {
+        const objectURL = URL.createObjectURL(blob);
+        try {image = new Image(); image.src = objectURL; await image.decode();}
+        finally {URL.revokeObjectURL(objectURL);}
+      }
+      if (generation !== epoch || preference.matches || task.cancelled) {close(image); return;}
+      cache.set(index, image); failures.delete(index); trimCache(); needsPaint = true;
+    })().catch(error => {
+      if (generation === epoch && !task.cancelled && error.name !== 'AbortError') {
+        const count = (failures.get(index)?.count || 0) + 1;
+        failures.set(index, {count, until:performance.now() + Math.min(15000, 1000 * 2 ** count)});
+        clearTimeout(retryTimer);
+        if (count < 4) retryTimer = setTimeout(schedule, Math.min(15000, 1000 * 2 ** count));
+      }
+    }).finally(() => {
+      if (pending.get(index) === task) pending.delete(index);
+      if (generation === epoch) schedule();
+    });
+  }
+  function available(position) {
+    const first = Math.floor(position), second = Math.min(config.frames-1, Math.ceil(position));
+    const a = Math.floor(first / config.perSheet), b = Math.floor(second / config.perSheet);
+    request(a, 'high'); request(b, 'high');
+    return (cache.has(a) || previews.has(a)) && (cache.has(b) || previews.has(b));
+  }
+  function drawFrame(frame, alpha) {
+    const sheet = Math.floor(frame / config.perSheet);
+    const preview = previews.get(sheet);
+    const detailed = cache.has(sheet);
+    const image = detailed ? cache.get(sheet) : preview.image;
+    const tileWidth = detailed ? config.width : preview.width;
+    const tileHeight = detailed ? config.height : preview.height;
+    const local = frame % config.perSheet;
+    const scale = phone.matches ? Math.min(width/config.width, height/config.height) : Math.max(width/config.width, height/config.height);
+    const dw = config.width*scale, dh = config.height*scale;
+    ctx.globalAlpha = alpha;
+    if (alpha === 1) {ctx.fillStyle = '#24101e'; ctx.fillRect(0,0,width,height);}
+    ctx.drawImage(image, (local%config.columns)*tileWidth, Math.floor(local/config.columns)*tileHeight,
+      tileWidth, tileHeight, (width-dw)/2, (height-dh)/2, dw, dh);
+  }
+  function paint(now) {
+    raf = 0;
+    if (!config || !active || document.hidden || preference.matches) return;
+    const elapsed = now - (last || now-16.667); last = now;
+    const destination = target*(config.frames-1);
+    const travelDirection = Math.sign(destination-playhead.position) || direction;
+    const currentSheet = Math.floor(destination/config.perSheet);
+    const neighbourSheet = Math.floor(Math.ceil(destination)/config.perSheet);
+    const keep = new Set([currentSheet, neighbourSheet, currentSheet+travelDirection]);
+    pending.forEach((task,index) => {
+      if (!keep.has(index)) {task.cancelled = true; pending.delete(index);}
+    });
+    const proposed = playhead.next(destination, elapsed);
+    const ready = available(proposed);
+    if (ready && (needsPaint || proposed !== playhead.position)) {
+      playhead.commit(proposed);
+      const frame = Math.floor(proposed), blend = proposed-frame;
+      drawFrame(frame, 1);
+      if (blend > 0) drawFrame(Math.ceil(proposed), blend);
+      ctx.globalAlpha = 1; needsPaint = false;
+      stage.classList.add('world-painted'); canvas.dataset.frame = String(frame);
+      if (debug) {
+        canvas.dataset.target = destination.toFixed(3);
+        const trace = (canvas.dataset.trace || '').split(',').filter(Boolean);
+        if (Number(trace.at(-1)) !== frame || !trace.length) trace.push(String(frame));
+        canvas.dataset.trace = trace.slice(-512).join(',');
+      }
+    }
+    request(currentSheet + travelDirection);
+    warmFilm();
+    warmPreviews();
+    trimCache();
+    // Stop here. Only fresh scroll/resize input or a completed decoder may repaint.
+  }
+  function release() {
+    epoch++;
+    if (raf) cancelAnimationFrame(raf); raf = 0; last = 0;
+    pending.forEach(task => {task.cancelled = true;}); pending.clear();
+    downloads.forEach(task => task.controller.abort()); downloads.clear(); compressed.clear();
+    previews.forEach(preview => close(preview.image)); previews.clear(); previewFailures.clear(); previewBusy = false;
+    cache.forEach(close); cache.clear(); failures.clear();
+    clearTimeout(retryTimer); config = undefined;
+    // Retain canvas pixels to avoid flashing an old poster when revisiting.
+  }
+  async function configure(reset = false) {
+    if (preference.matches) return;
+    const previousPosition = !reset && playhead ? playhead.position : null;
+    update(); const initialTarget = target;
+    release(); const generation = epoch;
+    try {
+      const manifest = await manifestAt(stage.dataset.manifest);
+      if (generation !== epoch || preference.matches) return;
+      config = phone.matches ? manifest.mobile : manifest.desktop;
+      playhead = new FramePlayhead(config.frames, previousPosition ?? initialTarget*(config.frames-1));
+      measure(); needsPaint = true; update(); available(playhead.position); schedule();
+    } catch {/* The local poster remains if the film cannot load. */}
+  }
+  const visibility = new IntersectionObserver(([entry]) => {
+    active = entry.isIntersecting;
+    clearTimeout(releaseTimer);
+    if (active) {
+      last = 0;
+      if (!config) configure(); else {update(); schedule();}
+    } else {
+      if (raf) cancelAnimationFrame(raf); raf = 0;
+      releaseTimer = setTimeout(release, 1500);
+    }
+  }, {rootMargin:'250px 0px'});
+  visibility.observe(stage);
+  addEventListener('scroll', update, {passive:true});
+  addEventListener('resize', () => {
+    if (phone.matches && lastWidth === innerWidth) return;
+    lastWidth = innerWidth; measure(); update(); schedule();
+  }, {passive:true});
+  phone.addEventListener('change', () => {if (active) configure(true); else {release(); playhead = undefined;}});
+  document.addEventListener('visibilitychange', () => {if (!document.hidden) {last = 0; update();}});
+  preference.addEventListener('change', () => {
+    if (preference.matches) {release(); stage.classList.remove('world-painted');}
+    else if (active) configure();
+  });
+});
