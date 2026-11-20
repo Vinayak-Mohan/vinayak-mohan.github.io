@@ -29,9 +29,7 @@
       '.cover-copy > p', '.letter-copy > p', '.light-copy > p',
       '.memory-copy > p', '.closing-copy > p', '.closing-copy > a',
       '[data-words] > span', '[data-words] > i', '.fine-ornament',
-      '.cover-couple img', '.letter-couple img', '.swing img', '.depth-asset > img',
-      '.celebration-date', '.event-heading', '.event > h4',
-      '.event-address', '.event > a', '.events-meta > p', '.events-meta > a'
+      '.cover-couple img', '.letter-couple img', '.swing img', '.depth-asset > img'
     ].join(',');
     const items = [...main.querySelectorAll(selector)];
     const order = new Map(items.map((item,index)=>[item,index]));
@@ -99,7 +97,7 @@
     const hint=gate.querySelector('.gate-hint');
     action.textContent='Loading invitation';
     hint.textContent='A moment, please';
-    const heroImages=[...main.querySelectorAll('.cover img'),...gate.querySelectorAll('.latch-bolt')];
+    const heroImages=[...main.querySelectorAll('.cover img'),...gate.querySelectorAll('.bolt-mechanism img')];
     const film=gate.querySelector('.entrance-film');
     const filmReady=film && !reduced.matches && window.prepareInvitationFilm?window.prepareInvitationFilm(film):Promise.resolve();
     const ready=Promise.allSettled([...heroImages.map(img=>img.decode?.() || Promise.resolve()),filmReady]);
@@ -107,7 +105,7 @@
       gate.classList.add('is-ready');
       gate.setAttribute('aria-busy','false');
       seal.disabled=false;
-      action.textContent='Unlock the doors';
+      action.textContent='Open invitation';
       hint.textContent='Tap the handle, or slide right';
     });
     let opening=false;
