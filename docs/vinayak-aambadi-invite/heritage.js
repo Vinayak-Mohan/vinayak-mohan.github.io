@@ -91,25 +91,13 @@
     main.inert=true;
     document.documentElement.classList.add('invitation-sealed');
     const seal=gate.querySelector('button');
-    seal.disabled=true;
-    gate.setAttribute('aria-busy','true');
     const action=gate.querySelector('.gate-action');
     const hint=gate.querySelector('.gate-hint');
-    action.textContent='Loading invitation';
-    hint.textContent='A moment, please';
-    const heroImages=[...main.querySelectorAll('.cover img'),...gate.querySelectorAll('.bolt-mechanism img')];
     const film=gate.querySelector('.entrance-film');
-    const filmReady=film && !reduced.matches && window.prepareInvitationFilm?window.prepareInvitationFilm(film):Promise.resolve();
-    const ready=Promise.allSettled([...heroImages.map(img=>img.decode?.() || Promise.resolve()),filmReady]);
-    Promise.race([ready,new Promise(resolve=>setTimeout(resolve,5000))]).then(()=>{
-      gate.classList.add('is-ready');
-      gate.setAttribute('aria-busy','false');
-      seal.disabled=false;
-      action.textContent='Open invitation';
-      hint.textContent='Tap the handle, or slide right';
-    });
     let opening=false;
     window.bindInvitationHandle?.({gate,button:seal});
+    gate.classList.add('is-ready');
+    if(film && !reduced.matches)window.prepareInvitationFilm?.(film);
     seal.addEventListener('click',async()=>{
       if(opening || seal.disabled) return;
       opening=true;
@@ -119,8 +107,10 @@
       coverRevealed=true;
       scrollTo({top:0,behavior:'instant'});
       gate.classList.add('opening');
-      if(!reduced.matches)await new Promise(resolve=>setTimeout(resolve,880));
-      action.textContent='Opening the doors';
+      const unlocked=reduced.matches?Promise.resolve():new Promise(resolve=>setTimeout(()=>{
+        action.textContent='Opening the doors';
+        resolve();
+      },880));
       let revealTimer;
       const finish=()=>{
         if(gate.hidden) return;
@@ -143,7 +133,8 @@
         gate.classList.add('film-revealing');
         main.classList.add('film-arrival');
       };
-      if(window.playInvitationEntrance && await window.playInvitationEntrance({gate,main,reduced,reveal:revealFromFilm})) return;
+      if(window.playInvitationEntrance && await window.playInvitationEntrance({gate,reduced,reveal:revealFromFilm,unlocked})) return;
+      await unlocked;
       // The same stationary reveal also covers reduced motion, absent media,
       // and browsers without the animation library. Never zoom the hero crop.
       revealFromFilm();

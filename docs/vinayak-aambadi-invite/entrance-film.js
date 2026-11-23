@@ -1,6 +1,5 @@
-// Prebuffer this short, one-shot film so network stalls cannot interrupt it.
+// Keep the door usable while the selected entrance film buffers.
 (() => {
-  const events=['progress','loadeddata','canplaythrough','durationchange'];
   function buffered(video) {
     if(video.readyState<2 || !Number.isFinite(video.duration)) return false;
     for(let i=0;i<video.buffered.length;i++) {
@@ -8,44 +7,23 @@
     }
     return false;
   }
-  function waitForBuffer(video,timeout) {
-    if(buffered(video)) return Promise.resolve(true);
-    return new Promise(resolve=>{
-      let timer;
-      const done=ready=>{
-        clearTimeout(timer);
-        events.forEach(event=>video.removeEventListener(event,check));
-        video.removeEventListener('error',failed);
-        resolve(ready);
-      };
-      const check=()=>{if(buffered(video))done(true);};
-      const failed=()=>done(false);
-      events.forEach(event=>video.addEventListener(event,check));
-      video.addEventListener('error',failed,{once:true});
-      timer=setTimeout(failed,timeout);
-      check();
-    });
-  }
   function selectSource(video) {
     const variant=matchMedia('(max-width:700px)').matches?'mobile':'desktop';
     const source=video.dataset[variant];
-    const assets=video.dataset.assets||'assets/entrance-film-v1';
-    video.poster=assets+'/'+variant+'-closed.webp';
     video.muted=true;
     video.playsInline=true;
     if(source && video.getAttribute('src')!==source){video.src=source;video.load();}
     return source;
   }
   window.prepareInvitationFilm=video=>{
-    if(navigator.connection?.saveData)return Promise.resolve(false);
+    if(navigator.connection?.saveData)return;
     video.preload='auto';
     selectSource(video);
-    return waitForBuffer(video,4500);
   };
-  window.playInvitationEntrance=async({gate,reduced,reveal})=>{
+  window.playInvitationEntrance=async({gate,reduced,reveal,unlocked})=>{
     const video=gate.querySelector('.entrance-film');
     if(!video || reduced.matches || !selectSource(video))return false;
-    let finished=false,timer,waiting=0,frameCallback=0;
+    let finished=false,timer,startTimer,stallTimer,waiting=0,frameCallback=0;
     const debug=new URLSearchParams(location.search).has('entrance-debug');
     const quality=()=>video.getVideoPlaybackQuality?.();
     let initialQuality,lastDropped=0;
@@ -56,15 +34,32 @@
       if(q)lastDropped=q.droppedVideoFrames;
       if(!finished)frameCallback=video.requestVideoFrameCallback(watchFrame);
     };
-    const onWaiting=()=>waiting++;
+    const onWaiting=()=>{
+      waiting++;
+      if(!gate.classList.contains('film-playing'))return;
+      clearTimeout(stallTimer);
+      stallTimer=setTimeout(()=>finish('stalled'),2000);
+    };
+    const onPlaying=()=>{
+      clearTimeout(startTimer);
+      clearTimeout(stallTimer);
+      if(!gate.classList.contains('film-playing')) {
+        gate.style.setProperty('--entrance-duration',(video.duration/video.playbackRate)+'s');
+      }
+      gate.classList.remove('film-buffering');
+      gate.classList.add('film-playing');
+    };
     const finish=reason=>{
       if(finished)return;
       finished=true;
       clearTimeout(timer);
+      clearTimeout(startTimer);
+      clearTimeout(stallTimer);
       video.pause();
       video.removeEventListener('ended',onEnded);
       video.removeEventListener('error',onError);
       video.removeEventListener('waiting',onWaiting);
+      video.removeEventListener('playing',onPlaying);
       if(frameCallback)video.cancelVideoFrameCallback?.(frameCallback);
       if(debug){
         const final=quality();
@@ -82,21 +77,20 @@
     const onEnded=()=>finish('ended');
     const onError=()=>finish('error');
     video.addEventListener('ended',onEnded,{once:true});
-    video.addEventListener('error',onError,{once:true});
     video.addEventListener('waiting',onWaiting);
+    video.addEventListener('playing',onPlaying);
     gate.classList.add('film-buffering');
     video.preload='auto';
     timer=setTimeout(()=>finish('timeout'),14000);
-    const ready=await waitForBuffer(video,3500);
+    await unlocked;
     if(finished)return true;
-    if(!ready){finish('unbuffered');return true;}
+    if(video.error){finish('error');return true;}
+    video.addEventListener('error',onError,{once:true});
+    startTimer=setTimeout(()=>finish('unbuffered'),4300);
     initialQuality=quality();
     lastDropped=initialQuality?.droppedVideoFrames||0;
     if(debug && video.requestVideoFrameCallback)frameCallback=video.requestVideoFrameCallback(watchFrame);
     video.defaultPlaybackRate=video.playbackRate=1.15;
-    gate.style.setProperty('--entrance-duration',(video.duration/video.playbackRate)+'s');
-    gate.classList.remove('film-buffering');
-    gate.classList.add('film-playing');
     try{
       await video.play();
       if(finished)video.pause();

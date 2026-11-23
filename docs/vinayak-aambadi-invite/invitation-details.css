@@ -228,6 +228,10 @@
 .celebrations .events-meta { justify-content: center; padding-top: 0; border: 0; }
 
 @media (max-width: 700px) {
+ /* Let the selected entrance clip load before the artwork behind the door. */
+ .invite-gate:not([hidden], .film-playing, .film-revealing) + #invitation-content {
+  display: none;
+ }
  /* Keep each chapter at least a screen tall when the browser chrome collapses. */
  .letter, .light-story, .celebrations { min-height: 100svh; min-height: 100lvh; }
  .light-story { align-items: flex-start; padding-top: clamp(42px, 8svh, 82px); }
