@@ -28,6 +28,7 @@ if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEa
   const previews = new Map(), previewFailures = new Set();
   let previewBusy = false;
   const scene = stage.closest('.scene');
+  const isChapter = stage.dataset.world === 'chapter';
   let config, playhead, epoch = 0, active = false, raf = 0, last = 0;
   let target = 0, width = 0, height = 0, lastWidth = innerWidth, direction = 1;
   let needsPaint = true, retryTimer = 0, releaseTimer = 0;
@@ -36,7 +37,7 @@ if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEa
   };
   function measure() {
     const rect = stage.getBoundingClientRect();
-    const ratio = Math.min(devicePixelRatio || 1, phone.matches ? 1.25 : 1.5);
+    const ratio = Math.min(devicePixelRatio || 1, phone.matches && !isChapter ? 1.25 : 1.5);
     width = Math.max(1, Math.round(rect.width * ratio));
     height = Math.max(1, Math.round(rect.height * ratio));
     stage.style.setProperty('--world-inset', Math.max(0, (rect.height - rect.width * 16 / 9) / 2) + 'px');
@@ -54,7 +55,7 @@ if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEa
       target = range-scrollY < 1 ? 1 : scrollY < .5 ? 0 : clamp(scrollY/range);
     } else {
       const rect = scene.getBoundingClientRect();
-      if (stage.dataset.world === 'chapter') {
+      if (isChapter) {
         // Play the exchange while its lower-right action is still in view.
         const lead = innerHeight * .08;
         target = clamp((lead - rect.top) / (lead + rect.height * .5));
@@ -95,7 +96,8 @@ if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEa
       .sort((a,b) => Math.abs(a-current)-Math.abs(b-current))[0];
     if (index === undefined) return;
     const generation = epoch, film = config;
-    const tileWidth = Math.min(film.width, phone.matches ? 160 : 284);
+    const previewWidth = phone.matches ? (isChapter ? 224 : 160) : (isChapter ? 360 : 284);
+    const tileWidth = Math.min(film.width, previewWidth);
     const tileHeight = Math.round(tileWidth*film.height/film.width);
     previewBusy = true;
     try {
@@ -104,7 +106,7 @@ if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEa
       const image = await createImageBitmap(compressed.get(index), {
         resizeWidth:tileWidth*film.columns,
         resizeHeight:tileHeight*Math.ceil(film.perSheet/film.columns),
-        resizeQuality:'low'
+        resizeQuality:isChapter?'medium':'low'
       });
       if (generation !== epoch) {close(image); return;}
       previews.set(index, {image,width:tileWidth,height:tileHeight});
@@ -204,7 +206,8 @@ if (!economical) document.querySelectorAll('.scroll-world[data-manifest]').forEa
       const frame = Math.floor(proposed), blend = proposed-frame;
       drawFrame(frame, 1);
       if (blend > 0) drawFrame(Math.ceil(proposed), blend);
-      ctx.globalAlpha = 1; needsPaint = false;
+      ctx.globalAlpha = 1;
+      needsPaint = false;
       stage.classList.add('world-painted'); canvas.dataset.frame = String(frame);
       if (debug) {
         canvas.dataset.target = destination.toFixed(3);
