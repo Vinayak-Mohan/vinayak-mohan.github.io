@@ -98,9 +98,30 @@
     window.bindInvitationHandle?.({gate,button:seal});
     gate.classList.add('is-ready');
     if(film && !reduced.matches)window.prepareInvitationFilm?.(film);
+    const music = document.querySelector('#invitation-music[src]');
+    const musicToggle = document.querySelector('.music-toggle');
+    function setMusicMuted(muted) {
+      music.muted = muted;
+      musicToggle.setAttribute('aria-pressed', String(muted));
+    }
+    function playMusic() {
+      music.play().catch(() => setMusicMuted(true));
+    }
+    if (music && musicToggle) {
+      musicToggle.addEventListener('click', () => {
+        setMusicMuted(!music.muted);
+        if (!music.muted && music.paused) playMusic();
+      });
+      music.addEventListener('error', () => { musicToggle.hidden = true; });
+      music.addEventListener('ended', () => { musicToggle.hidden = true; });
+    }
     seal.addEventListener('click',async()=>{
       if(opening || seal.disabled) return;
       opening=true;
+      if (music && musicToggle && !music.error) {
+        musicToggle.hidden = false;
+        playMusic();
+      }
       seal.disabled=true;
       action.textContent='Unlocking the doors';
       hint.textContent='Welcome to our celebration';

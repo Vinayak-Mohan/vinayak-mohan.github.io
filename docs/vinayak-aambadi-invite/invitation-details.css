@@ -1,3 +1,32 @@
+.music-toggle:not([hidden]) {
+ position: fixed;
+ z-index: 51;
+ right: calc(8px + env(safe-area-inset-right));
+ bottom: calc(8px + env(safe-area-inset-bottom));
+ display: grid;
+ place-items: center;
+ width: 44px;
+ height: 44px;
+ padding: 0;
+ border: 0;
+ border-radius: 50%;
+ background: transparent;
+ color: #f8ead2;
+ cursor: pointer;
+}
+.music-toggle::before {
+ content: '';
+ position: absolute;
+ inset: 5px;
+ border: 1px solid #e7cc9959;
+ border-radius: inherit;
+ background: #391d1c99;
+}
+.music-toggle svg { position: relative; width: 17px; height: 17px; }
+.music-toggle:focus-visible { outline: 2px solid #f8ead2; outline-offset: -5px; }
+.music-slash, .music-toggle[aria-pressed="true"] .music-waves { display: none; }
+.music-toggle[aria-pressed="true"] .music-slash { display: initial; }
+
 /* The launch type arrives in a single sequence. The lock remains interactive. */
 @media (prefers-reduced-motion: no-preference) {
  .invite-gate .gate-heading { animation: none; }
